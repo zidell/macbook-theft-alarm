@@ -1,0 +1,21 @@
+{
+  "alarm_volume": 100,
+  "alarm_playback_gain": 8,
+  "alarm_sound_type": 1,
+  "alarm_siren_low_hz": 760,
+  "alarm_siren_high_hz": 1320,
+  "alarm_siren_sweep_hz": 2.6,
+  "alarm_siren_pulse_hz": 7,
+  "warning_text": "CCTV 감시중",
+  "warning_window_level": "screenSaver",
+  "warning_window_opacity": 0.1,
+  "kill_switch_keys": ["escape", "enter"],
+  "prevent_sleep": true,
+  "live_port": 8787,
+  "live_max_seconds": 600,
+  "live_snapshot_fps": 12,
+  "local_record_fps": 5,
+  "recording_dir": "/Users/your-name/Library/CloudStorage/GoogleDrive-your-account/My Drive/MacBook Theft Alarm",
+  "notification_webhook_url": "https://hooks.slack.com/services/WORKSPACE/CHANNEL/SECRET",
+  "notification_recipient": ""
+}
