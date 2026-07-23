@@ -1,0 +1,5 @@
+.build/
+config.json
+captures/
+recordings/
+motion_logs/
