@@ -61,16 +61,23 @@ find_ngrok() {
   return 1
 }
 
+REQUIRED_SWIFT_VERSION="6.0"
+
 ensure_command_line_tools() {
   SWIFT_PATH="$(/usr/bin/xcrun --find swift 2>/dev/null || true)"
-  if [[ -n "$SWIFT_PATH" && -x "$SWIFT_PATH" ]]; then
-    return
+  if [[ -z "$SWIFT_PATH" || ! -x "$SWIFT_PATH" ]]; then
+    print "\nXcode Command Line Tools가 없어 macOS 설치 창을 엽니다."
+    print "설치를 완료한 뒤 이 명령을 다시 실행하세요: sudo ./watch.sh"
+    /usr/bin/xcode-select --install >/dev/null 2>&1 || true
+    exit 1
   fi
 
-  print "\nXcode Command Line Tools가 없어 macOS 설치 창을 엽니다."
-  print "설치를 완료한 뒤 이 명령을 다시 실행하세요: sudo ./watch.sh"
-  /usr/bin/xcode-select --install >/dev/null 2>&1 || true
-  exit 1
+  local installed_swift_version
+  installed_swift_version="$("$SWIFT_PATH" --version 2>/dev/null | /usr/bin/grep -Eo 'Swift version [0-9]+\.[0-9]+(\.[0-9]+)?' | /usr/bin/awk '{print $3}')"
+  if [[ -z "$installed_swift_version" ]] || \
+     [[ "$(printf '%s\n%s\n' "$REQUIRED_SWIFT_VERSION" "$installed_swift_version" | /usr/bin/sort -V | /usr/bin/head -n1)" != "$REQUIRED_SWIFT_VERSION" ]]; then
+    fail "설치된 Swift 버전(${installed_swift_version:-확인 불가})이 너무 낮습니다. Swift ${REQUIRED_SWIFT_VERSION} 이상이 필요합니다. 소프트웨어 업데이트(시스템 설정 > 일반 > 소프트웨어 업데이트) 또는 최신 Xcode를 설치해 Command Line Tools를 갱신한 뒤 다시 실행하세요."
+  fi
 }
 
 install_ngrok() {

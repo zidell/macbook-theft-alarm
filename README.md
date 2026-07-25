@@ -24,10 +24,11 @@ flowchart LR
 ## 요구 사항
 
 - macOS 14 이상
+- Swift 6.0 이상 (Xcode 16 이상 또는 그에 포함된 Command Line Tools)
 - 외부 접속과 알림 발송을 위한 인터넷 연결이 필요합니다.
 - 사용 가능한 스피커 또는 오디오 출력 장치가 필요합니다.
 
-처음 실행할 때 `watch.sh`가 필요한 도구를 점검합니다. Swift가 없으면 macOS의 Xcode Command Line Tools 설치 창을 열고, ngrok가 없으면 자동 설치합니다. ngrok 계정 로그인 토큰과 감시 링크를 받을 메신저 웹훅 주소는 직접 입력해야 합니다. 카메라 권한은 macOS 승인 창에서 허용해야 하며, 거부했다면 시스템 설정의 카메라 페이지를 자동으로 엽니다.
+처음 실행할 때 `watch.sh`가 필요한 도구를 점검합니다. Swift가 없으면 macOS의 Xcode Command Line Tools 설치 창을 열고, 이미 설치된 Swift 버전이 6.0보다 낮으면 소프트웨어 업데이트나 최신 Xcode 설치를 안내한 뒤 종료합니다. ngrok가 없으면 자동 설치합니다. ngrok 계정 로그인 토큰과 감시 링크를 받을 메신저 웹훅 주소는 직접 입력해야 합니다. 카메라 권한은 macOS 승인 창에서 허용해야 하며, 거부했다면 시스템 설정의 카메라 페이지를 자동으로 엽니다.
 
 ## 설치 및 첫 실행
 
@@ -126,3 +127,4 @@ Telegram URL은 `https://api.telegram.org/bot<BOT_TOKEN>/sendMessage` 형식이�
 - 감시 링크가 오지 않음: `ngrok` 로그인 상태와 `notification_webhook_url`을 확인해야 합니다.
 - 뚜껑을 닫은 뒤에도 잠들지 않음: `sudo pmset -a disablesleep 0`을 실행해야 합니다.
 - `sudo: ./watch.sh: command not found`: `watch.sh`에 실행 권한이 없는 경우입니다. `chmod +x watch.sh`를 실행한 뒤 다시 시도해야 합니다.
+- `package 'macbook-theft-alarm' is using Swift tools version 6.0 but the installed version is ...`: 설치된 Swift가 6.0보다 낮은 경우입니다. 소프트웨어 업데이트(시스템 설정 > 일반 > 소프트웨어 업데이트) 또는 최신 Xcode를 설치해 Command Line Tools를 갱신해야 합니다.
