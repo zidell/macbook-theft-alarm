@@ -7,17 +7,19 @@ final class LiveServer: @unchecked Sendable {
     private let token: String
     private let snapshotFPS: Double
     private let recordingRetentionSeconds: Double
+    private let liveMaxSeconds: Double
     private let listener: NWListener
     private let queue = DispatchQueue(label: "alert.live.server")
     private let started = DispatchSemaphore(value: 0)
     private var startError: Error?
 
-    init(port: Int, token: String, snapshotFPS: Double, recordingRetentionSeconds: Double, camera: CameraSnapper, alarm: AlarmPlayer) throws {
+    init(port: Int, token: String, snapshotFPS: Double, recordingRetentionSeconds: Double, liveMaxSeconds: Double, camera: CameraSnapper, alarm: AlarmPlayer) throws {
         self.camera = camera
         self.alarm = alarm
         self.token = token
         self.snapshotFPS = snapshotFPS
         self.recordingRetentionSeconds = recordingRetentionSeconds
+        self.liveMaxSeconds = liveMaxSeconds
         self.listener = try NWListener(using: .tcp, on: NWEndpoint.Port(rawValue: UInt16(port))!)
     }
 
@@ -82,7 +84,7 @@ final class LiveServer: @unchecked Sendable {
 
         switch url.path {
         case "/", "/watch":
-            return htmlResponse(watchHTML(token: token, fps: snapshotFPS, retentionSeconds: recordingRetentionSeconds))
+            return htmlResponse(watchHTML(token: token, fps: snapshotFPS, retentionSeconds: recordingRetentionSeconds, maxDurationLabel: formatDurationLabel(seconds: liveMaxSeconds)))
         case "/snapshot.jpg":
             do {
                 let jpeg = try camera.snapshotJPEG(timeout: 0.2)
@@ -155,7 +157,23 @@ final class LiveServer: @unchecked Sendable {
     }
 }
 
-private func watchHTML(token: String, fps: Double, retentionSeconds: Double) -> String {
+private func formatDurationLabel(seconds: Double) -> String {
+    let total = Int(seconds.rounded())
+    let hours = total / 3600
+    let minutes = (total % 3600) / 60
+
+    if hours > 0 && minutes > 0 {
+        return "\(hours)시간 \(minutes)분"
+    } else if hours > 0 {
+        return "\(hours)시간"
+    } else if minutes > 0 {
+        return "\(minutes)분"
+    } else {
+        return "\(total)초"
+    }
+}
+
+private func watchHTML(token: String, fps: Double, retentionSeconds: Double, maxDurationLabel: String) -> String {
     """
     <!doctype html>
     <html>
@@ -172,6 +190,7 @@ private func watchHTML(token: String, fps: Double, retentionSeconds: Double) -> 
         #status.bad{color:#ff5b5b}
         main{position:relative;flex:1;overflow:hidden}
         canvas{width:100%;height:100%;object-fit:contain;background:#000}
+        #max-duration{position:absolute;left:8px;bottom:8px;font-size:10px;color:rgba(255,255,255,0.4);pointer-events:none}
         footer{display:grid;grid-template-columns:1.2fr 1fr;gap:8px;padding:10px;background:#111;border-top:1px solid #333}
         button,a{flex:1;padding:12px;border:1px solid #555;border-radius:6px;background:#1b1b1b;color:#fff;text-align:center;text-decoration:none;font-size:15px}
         #alarm{background:#d80000;border-color:#ff3b30;font-weight:800;font-size:18px}
@@ -182,7 +201,10 @@ private func watchHTML(token: String, fps: Double, retentionSeconds: Double) -> 
     </head>
     <body>
       <header><strong>MacBook Live</strong><span id="status">starting</span></header>
-      <main><canvas id="view" width="960" height="540"></canvas></main>
+      <main>
+        <canvas id="view" width="960" height="540"></canvas>
+        <span id="max-duration">최대 \(maxDurationLabel) 연동 가능</span>
+      </main>
       <footer>
         <button id="alarm">경보</button>
         <button id="save">Save Recording</button>

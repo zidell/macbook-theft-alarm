@@ -144,6 +144,7 @@ private func runLive(config: Config, stopSignal: StopSignal, onLiveReady: @escap
             token: token,
             snapshotFPS: config.liveSnapshotFPS,
             recordingRetentionSeconds: config.recordingRetentionSeconds,
+            liveMaxSeconds: config.liveMaxSeconds,
             camera: camera,
             alarm: alarm
         )
