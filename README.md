@@ -5,7 +5,7 @@
 이 도구는 불안감을 줄이고 사후 대응을 돕기 위한 보조 수단일 뿐입니다. 도난을 막는 확실한 방법은 아니므로, 걱정된다면 이 스크립트를 실행하기보다 맥북을 직접 챙기는 편이 낫습니다.
 
 - 카메라 프레임을 로컬 폴더에 계속 저장합니다.
-- 감시 링크는 기본적으로 10분 뒤 종료됩니다.
+- 감시 링크는 기본적으로 2시간 뒤 종료됩니다.
 - 휴대폰 페이지에서만 경보를 제어합니다. 자동 흔들림/뚜껑 감지는 사용하지 않습니다.
 - 맥북을 열거나 닫는 것과 관계없이 경보는 계속 울립니다.
 
@@ -88,9 +88,10 @@ swift run alert sound-test 5
 | `kill_switch_keys` | 감시 모드를 끝내는 전역 키 목록입니다. | 배열. `c`, `enter`, `escape`, `space`, `q`를 사용할 수 있습니다. 기본값: `["escape", "enter"]` |
 | `prevent_sleep` | 감시 중 일반적인 macOS 잠자기를 막습니다. | `true` 또는 `false`. 기본값: `true` |
 | `live_port` | 맥북 내부 영상 중계 서버 포트입니다. ngrok가 이 포트를 외부에 연결합니다. | `1024`~`65535` 정수. 기본값: `8787` |
-| `live_max_seconds` | 감시가 자동 종료될 때까지의 시간(초)입니다. | 0보다 큰 숫자. 예: `600`은 10분 |
+| `live_max_seconds` | 감시가 자동 종료될 때까지의 시간(초)입니다. | 0보다 큰 숫자. 예: `7200`은 2시간 |
 | `live_snapshot_fps` | 휴대폰 페이지로 전달할 초당 카메라 프레임 수입니다. 높을수록 부드럽지만 네트워크 사용량이 늘어납니다. | 0보다 큰 숫자. 기본값: `12` |
 | `local_record_fps` | 로컬 저장 폴더에 기록할 초당 JPEG 프레임 수입니다. | 0보다 큰 숫자. 예: `5` |
+| `recording_retention_seconds` | 로컬 JPEG와 휴대폰 "Save Recording" 저장 분량이 유지되는 최근 시간(초)입니다. 이 시간이 지난 프레임은 맥북에서 자동 삭제되고, 휴대폰에서는 이 주기로 녹화가 갱신되어 Save를 누르면 최근 분량만 저장됩니다. | 0보다 큰 숫자. 기본값: `600`(10분) |
 | `recording_dir` | 프레임을 저장할 기존 폴더입니다. 폴더가 없거나 쓰기 불가하면 실행을 시작하지 않습니다. | 절대 경로. 예: `"/Users/me/Library/CloudStorage/.../맥북 Theft Alarm"` |
 | `notification_webhook_url` | 감시 링크를 받을 메신저 또는 웹훅 주소입니다. 주소 패턴에 따라 전송 형식을 자동 선택합니다. | Slack, Telegram, Discord 또는 일반 웹훅 URL. 실제 비밀 주소는 커밋 금지 |
 | `notification_recipient` | Telegram 수신 대상을 지정하는 `chat_id`입니다. | Telegram에서만 필요합니다. Slack, Discord, 일반 웹훅은 `""` |
@@ -111,6 +112,8 @@ Telegram URL은 `https://api.telegram.org/bot<BOT_TOKEN>/sendMessage` 형식이�
 ## 로컬 녹화
 
 실행할 때마다 `recording_dir` 아래에 시간 기반 폴더가 만들어지고, `frame-000000.jpg` 형식의 카메라 프레임이 저장됩니다. Google Drive 데스크톱 폴더를 지정하면 네트워크가 돌아온 뒤 Drive가 동기화합니다. 이 프로그램은 동영상 파일을 직접 업로드하지 않습니다.
+
+`recording_retention_seconds`(기본 10분)보다 오래된 프레임은 새 프레임이 저장될 때마다 자동으로 삭제됩니다. `live_max_seconds`로 감시 시간을 길게 잡아도 폴더에 파일이 무한정 쌓이지 않고 항상 최근 구간만 남습니다.
 
 ## 문제 해결
 

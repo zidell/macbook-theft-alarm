@@ -125,7 +125,8 @@ private func runLive(config: Config, stopSignal: StopSignal, onLiveReady: @escap
     let recorder = LocalFrameRecorder(
         camera: camera,
         directory: recordingURL,
-        fps: config.localRecordFPS
+        fps: config.localRecordFPS,
+        retentionSeconds: config.recordingRetentionSeconds
     )
     try recorder.start()
     printStartup("로컬 JPEG 녹화 시작 완료")
@@ -142,6 +143,7 @@ private func runLive(config: Config, stopSignal: StopSignal, onLiveReady: @escap
             port: config.livePort,
             token: token,
             snapshotFPS: config.liveSnapshotFPS,
+            recordingRetentionSeconds: config.recordingRetentionSeconds,
             camera: camera,
             alarm: alarm
         )

@@ -42,6 +42,7 @@ struct Config: Decodable {
     var liveMaxSeconds: Double
     var liveSnapshotFPS: Double
     var localRecordFPS: Double
+    var recordingRetentionSeconds: Double
     var recordingDir: String
     var notificationWebhookURL: String
     var notificationRecipient: String
@@ -63,6 +64,7 @@ struct Config: Decodable {
         case liveMaxSeconds = "live_max_seconds"
         case liveSnapshotFPS = "live_snapshot_fps"
         case localRecordFPS = "local_record_fps"
+        case recordingRetentionSeconds = "recording_retention_seconds"
         case recordingDir = "recording_dir"
         case notificationWebhookURL = "notification_webhook_url"
         case notificationRecipient = "notification_recipient"
@@ -92,6 +94,10 @@ struct Config: Decodable {
 
         if liveSnapshotFPS <= 0 || localRecordFPS <= 0 {
             throw AppError.message("live_snapshot_fps와 local_record_fps는 0보다 커야 합니다.")
+        }
+
+        if recordingRetentionSeconds <= 0 {
+            throw AppError.message("recording_retention_seconds는 0보다 커야 합니다.")
         }
 
         if alarmVolume < 0 || alarmVolume > 100 {

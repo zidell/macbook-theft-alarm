@@ -6,16 +6,18 @@ final class LiveServer: @unchecked Sendable {
     private let alarm: AlarmPlayer
     private let token: String
     private let snapshotFPS: Double
+    private let recordingRetentionSeconds: Double
     private let listener: NWListener
     private let queue = DispatchQueue(label: "alert.live.server")
     private let started = DispatchSemaphore(value: 0)
     private var startError: Error?
 
-    init(port: Int, token: String, snapshotFPS: Double, camera: CameraSnapper, alarm: AlarmPlayer) throws {
+    init(port: Int, token: String, snapshotFPS: Double, recordingRetentionSeconds: Double, camera: CameraSnapper, alarm: AlarmPlayer) throws {
         self.camera = camera
         self.alarm = alarm
         self.token = token
         self.snapshotFPS = snapshotFPS
+        self.recordingRetentionSeconds = recordingRetentionSeconds
         self.listener = try NWListener(using: .tcp, on: NWEndpoint.Port(rawValue: UInt16(port))!)
     }
 
@@ -80,7 +82,7 @@ final class LiveServer: @unchecked Sendable {
 
         switch url.path {
         case "/", "/watch":
-            return htmlResponse(watchHTML(token: token, fps: snapshotFPS))
+            return htmlResponse(watchHTML(token: token, fps: snapshotFPS, retentionSeconds: recordingRetentionSeconds))
         case "/snapshot.jpg":
             do {
                 let jpeg = try camera.snapshotJPEG(timeout: 0.2)
@@ -153,7 +155,7 @@ final class LiveServer: @unchecked Sendable {
     }
 }
 
-private func watchHTML(token: String, fps: Double) -> String {
+private func watchHTML(token: String, fps: Double, retentionSeconds: Double) -> String {
     """
     <!doctype html>
     <html>
@@ -188,14 +190,17 @@ private func watchHTML(token: String, fps: Double) -> String {
       <script>
         const token = "\(token)";
         const fps = \(String(format: "%.2f", fps));
+        const retentionSeconds = \(String(format: "%.0f", retentionSeconds));
         const canvas = document.getElementById('view');
         const ctx = canvas.getContext('2d');
         const statusEl = document.getElementById('status');
         const alarmBtn = document.getElementById('alarm');
         const saveBtn = document.getElementById('save');
         const footer = document.querySelector('footer');
-        const chunks = [];
+        let chunks = [];
         let recorder;
+        let mediaStream;
+        let rotateTimer;
         let frameCount = 0;
 
         function setStatus(text, cls) {
@@ -239,18 +244,34 @@ private func watchHTML(token: String, fps: Double) -> String {
           }
         }
 
+        function beginRecording() {
+          chunks = [];
+          recorder = new MediaRecorder(mediaStream);
+          recorder.ondataavailable = event => {
+            if (event.data && event.data.size > 0) chunks.push(event.data);
+          };
+          recorder.start(1000);
+          clearTimeout(rotateTimer);
+          rotateTimer = setTimeout(rotateRecording, retentionSeconds * 1000);
+        }
+
+        function rotateRecording() {
+          if (recorder && recorder.state === 'recording') {
+            recorder.onstop = beginRecording;
+            recorder.stop();
+          } else {
+            beginRecording();
+          }
+        }
+
         function startRecording() {
           if (!canvas.captureStream || !window.MediaRecorder) {
             setStatus('live, recording unsupported', 'live');
             return;
           }
 
-          const stream = canvas.captureStream(fps);
-          recorder = new MediaRecorder(stream);
-          recorder.ondataavailable = event => {
-            if (event.data && event.data.size > 0) chunks.push(event.data);
-          };
-          recorder.start(1000);
+          mediaStream = canvas.captureStream(fps);
+          beginRecording();
         }
 
         function setAlarmButton(on) {
@@ -291,8 +312,10 @@ private func watchHTML(token: String, fps: Double) -> String {
         };
 
         saveBtn.onclick = () => {
-          if (recorder && recorder.state === 'recording') recorder.stop();
-          setTimeout(() => {
+          if (!recorder) return;
+          clearTimeout(rotateTimer);
+
+          const downloadAndResume = () => {
             const blob = new Blob(chunks, { type: 'video/webm' });
             const previousDownload = document.getElementById('download');
             if (previousDownload) previousDownload.remove();
@@ -304,7 +327,16 @@ private func watchHTML(token: String, fps: Double) -> String {
             download.textContent = 'WebM 다운로드';
             footer.appendChild(download);
             download.click();
-          }, 300);
+
+            beginRecording();
+          };
+
+          if (recorder.state === 'recording') {
+            recorder.onstop = downloadAndResume;
+            recorder.stop();
+          } else {
+            downloadAndResume();
+          }
         };
 
         startRecording();
