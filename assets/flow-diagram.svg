@@ -1,0 +1,103 @@
+<svg width="1120" height="560" viewBox="0 0 1120 560" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000000" flood-opacity="0.12"/>
+    </filter>
+    <marker id="arrow-indigo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6366f1"/>
+    </marker>
+    <marker id="arrow-teal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#14b8a6"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#ef4444"/>
+    </marker>
+  </defs>
+
+  <!-- card background so the diagram stays legible on both light and dark README themes -->
+  <rect x="4" y="4" width="1112" height="552" rx="28" fill="#ffffff" stroke="#e5e7eb" filter="url(#cardShadow)"/>
+
+  <!-- ===================== MacBook (vector) ===================== -->
+  <g>
+    <!-- lid / bezel -->
+    <rect x="50" y="90" width="380" height="240" rx="14" fill="#1c1c1e" stroke="#000000" stroke-width="1"/>
+    <circle cx="240" cy="98" r="2.5" fill="#3a3a3c"/>
+    <!-- screen -->
+    <rect x="66" y="106" width="348" height="208" rx="6" fill="#060606"/>
+
+    <!-- terminal window running the script -->
+    <circle cx="82" cy="122" r="3.5" fill="#ff5f57"/>
+    <circle cx="94" cy="122" r="3.5" fill="#febc2e"/>
+    <circle cx="106" cy="122" r="3.5" fill="#28c840"/>
+
+    <g font-family="'SF Mono','Menlo','Consolas',monospace" font-size="11">
+      <text x="82" y="146" fill="#e5e7eb">$ sudo ./watch.sh</text>
+      <text x="82" y="166" fill="#4ade80">✓ 설정 · 인터넷 · 오디오</text>
+      <text x="82" y="186" fill="#4ade80">✓ 카메라 프레임 수신</text>
+      <text x="82" y="206" fill="#4ade80">✓ 로컬 녹화 시작</text>
+      <text x="82" y="226" fill="#4ade80">✓ 내부 서버 · ngrok 연결</text>
+      <text x="82" y="246" fill="#4ade80">✓ 웹훅 전송 완료</text>
+      <text x="82" y="270" fill="#f87171" font-weight="700">● CCTV 감시중</text>
+    </g>
+
+    <!-- base: rounded trapezoid, top edge matches the screen width exactly, flares slightly at the bottom -->
+    <path d="M56,330 L424,330 Q430,330 431.455,335.82 L438.545,364.18 Q440,370 434,370 L46,370 Q40,370 41.455,364.18 L48.545,335.82 Q50,330 56,330 Z" fill="#d8d8dc" stroke="#b8b8bc" stroke-width="1"/>
+    <line x1="58" y1="330" x2="422" y2="330" stroke="#000000" stroke-opacity="0.15"/>
+
+    <text x="240" y="402" text-anchor="middle" font-size="14" font-weight="700" fill="#111827">맥북 &#8212; sudo ./watch.sh 실행</text>
+    <text x="240" y="422" text-anchor="middle" font-size="12" fill="#6b7280">카메라 촬영 · 프레임 저장 · 경보 재생</text>
+  </g>
+
+  <!-- ===================== Phone (vector) ===================== -->
+  <g>
+    <!-- chassis -->
+    <rect x="820" y="50" width="220" height="460" rx="36" fill="#0b0b0f" stroke="#000000" stroke-width="2"/>
+    <rect x="818" y="150" width="4" height="32" rx="2" fill="#000000"/>
+    <rect x="818" y="192" width="4" height="32" rx="2" fill="#000000"/>
+    <rect x="1038" y="140" width="4" height="54" rx="2" fill="#000000"/>
+
+    <!-- screen -->
+    <rect x="832" y="80" width="196" height="400" rx="24" fill="#050505"/>
+    <rect x="900" y="88" width="60" height="18" rx="9" fill="#000000"/>
+
+    <!-- our real UI: header -->
+    <rect x="832" y="114" width="196" height="30" fill="#111111"/>
+    <line x1="832" y1="144" x2="1028" y2="144" stroke="#2a2a2a"/>
+    <text x="842" y="133" font-size="11" font-weight="700" fill="#ffffff">MacBook Live</text>
+    <text x="1018" y="133" text-anchor="end" font-size="9" fill="#46e27b">live 214</text>
+
+    <!-- video area -->
+    <rect x="832" y="144" width="196" height="228" fill="#000000"/>
+    <circle cx="1006" cy="158" r="7" fill="#ef4444" opacity="0.35"/>
+    <circle cx="1006" cy="158" r="4" fill="#ef4444"/>
+    <text x="994" y="161" text-anchor="end" font-size="8" font-weight="700" fill="#ef4444">REC</text>
+    <rect x="895" y="235" width="70" height="42" rx="4" fill="none" stroke="#3f3f46" stroke-width="2"/>
+    <path d="M885,277 L975,277 L965,289 L895,289 Z" fill="none" stroke="#3f3f46" stroke-width="2"/>
+
+    <!-- footer buttons, matching the real toggle -->
+    <rect x="832" y="372" width="196" height="72" fill="#111111"/>
+    <line x1="832" y1="372" x2="1028" y2="372" stroke="#2a2a2a"/>
+    <rect x="840" y="380" width="112" height="48" rx="8" fill="#d80000" stroke="#ff3b30" stroke-width="1.5"/>
+    <text x="896" y="409" text-anchor="middle" font-size="13" font-weight="800" fill="#ffffff">경보 알람</text>
+    <rect x="960" y="380" width="60" height="48" rx="8" fill="#1b1b1b" stroke="#555555" stroke-width="1"/>
+    <text x="990" y="401" text-anchor="middle" font-size="8" fill="#ffffff">Save</text>
+    <text x="990" y="412" text-anchor="middle" font-size="7" fill="#cccccc">Recording</text>
+
+    <rect x="900" y="464" width="60" height="4" rx="2" fill="#3a3a3c"/>
+
+    <text x="940" y="530" text-anchor="middle" font-size="14" font-weight="700" fill="#111827">휴대폰 &#8212; 실시간 감시 화면</text>
+  </g>
+
+  <!-- ===================== Steps ===================== -->
+  <!-- 1. 감시 링크 전송 -->
+  <line x1="474" y1="150" x2="770" y2="150" stroke="#6366f1" stroke-width="3" marker-end="url(#arrow-indigo)"/>
+  <text x="622" y="136" text-anchor="middle" font-size="13" font-weight="700" fill="#6366f1">1. 감시 링크 전송</text>
+
+  <!-- 2. 실시간 영상 감시 (bidirectional) -->
+  <line x1="474" y1="270" x2="770" y2="270" stroke="#14b8a6" stroke-width="3" marker-start="url(#arrow-teal)" marker-end="url(#arrow-teal)"/>
+  <text x="622" y="256" text-anchor="middle" font-size="13" font-weight="700" fill="#14b8a6">2. 실시간 영상 감시</text>
+
+  <!-- 3. 문제 발생 시 경보 및 달려감 -->
+  <line x1="770" y1="400" x2="474" y2="400" stroke="#ef4444" stroke-width="3" marker-end="url(#arrow-red)"/>
+  <text x="622" y="386" text-anchor="middle" font-size="13" font-weight="700" fill="#ef4444">3. 문제 발생 시 경보 및 달려감</text>
+</svg>
