@@ -8,7 +8,8 @@ let package = Package(
         .macOS(.v14)
     ],
     products: [
-        .executable(name: "alert", targets: ["Alert"])
+        .executable(name: "alert", targets: ["Alert"]),
+        .executable(name: "alert-location", targets: ["LocationHelper"])
     ],
     targets: [
         .executableTarget(
@@ -27,6 +28,12 @@ let package = Package(
                 .linkedFramework("CoreImage"),
                 .linkedFramework("CoreMedia"),
                 .linkedFramework("Network")
+            ]
+        ),
+        .executableTarget(
+            name: "LocationHelper",
+            linkerSettings: [
+                .linkedFramework("CoreLocation")
             ]
         )
     ]

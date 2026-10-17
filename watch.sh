@@ -190,9 +190,62 @@ create_first_run_config() {
   print "첫 실행 설정을 저장했습니다."
 }
 
+# 터미널에서 실행된 실행 파일은 macOS가 위치 권한 창 없이 거부하므로, 위치만 별도 앱 번들로 만듭니다.
+# 번들 실행 파일이 바뀔 때만 다시 서명해 이미 받은 위치 권한이 유지되게 합니다.
+prepare_location_app() {
+  LOCATION_APP="$ALERT_DIR/.build/MacBook Theft Alarm Location.app"
+  local bin_path helper_binary bundle_binary
+
+  run_as_target_user "$SWIFT_PATH" build --product alert-location >/dev/null || {
+    print -u2 "위치 앱 빌드에 실패해 위치 표시 없이 진행합니다."
+    LOCATION_APP=""
+    return
+  }
+  bin_path="$(run_as_target_user "$SWIFT_PATH" build --show-bin-path)"
+  helper_binary="$bin_path/alert-location"
+  bundle_binary="$LOCATION_APP/Contents/MacOS/alert-location"
+
+  local info_plist needs_sign=0
+  info_plist="$(/bin/cat <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>local.macbook-theft-alarm.location</string>
+    <key>CFBundleName</key>
+    <string>MacBook Theft Alarm Location</string>
+    <key>CFBundleExecutable</key>
+    <string>alert-location</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>LSUIElement</key>
+    <true/>
+    <key>NSLocationUsageDescription</key>
+    <string>감시모드에서 맥북의 현재 위치를 휴대폰 페이지에 표시하기 위해 사용합니다.</string>
+</dict>
+</plist>
+PLIST
+)"
+
+  run_as_target_user /bin/mkdir -p "$LOCATION_APP/Contents/MacOS"
+  if [[ "$(/bin/cat "$LOCATION_APP/Contents/Info.plist" 2>/dev/null)" != "$info_plist" ]]; then
+    print -r -- "$info_plist" | run_as_target_user /usr/bin/tee "$LOCATION_APP/Contents/Info.plist" >/dev/null
+    needs_sign=1
+  fi
+  if ! /usr/bin/cmp -s "$helper_binary" "$bundle_binary"; then
+    run_as_target_user /bin/cp "$helper_binary" "$bundle_binary"
+    needs_sign=1
+  fi
+  if (( needs_sign )); then
+    run_as_target_user /usr/bin/codesign --force --sign - "$LOCATION_APP" >/dev/null 2>&1
+  fi
+}
+
 ensure_command_line_tools
 ensure_ngrok
 create_first_run_config
+prepare_location_app
 
 ORIGINAL_VOLUME="$(run_as_target_user /usr/bin/osascript -e 'output volume of (get volume settings)' 2>/dev/null || true)"
 
@@ -205,4 +258,5 @@ run_as_target_user /usr/bin/env \
   ALERT_DIR="$ALERT_DIR" \
   ALERT_TERMINAL_PROGRAM="${TERM_PROGRAM:-}" \
   NGROK_PATH="$NGROK_PATH" \
+  ALERT_LOCATION_APP="$LOCATION_APP" \
   "$SWIFT_PATH" run alert live

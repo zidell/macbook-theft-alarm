@@ -4,6 +4,9 @@ import Network
 final class LiveServer: @unchecked Sendable {
     private let camera: CameraSnapper
     private let alarm: AlarmPlayer
+    private let location: LocationProvider
+    private let noise: NoiseMeter
+    private let startedAt = Date()
     private let token: String
     private let snapshotFPS: Double
     private let recordingRetentionSeconds: Double
@@ -13,9 +16,21 @@ final class LiveServer: @unchecked Sendable {
     private let started = DispatchSemaphore(value: 0)
     private var startError: Error?
 
-    init(port: Int, token: String, snapshotFPS: Double, recordingRetentionSeconds: Double, liveMaxSeconds: Double, camera: CameraSnapper, alarm: AlarmPlayer) throws {
+    init(
+        port: Int,
+        token: String,
+        snapshotFPS: Double,
+        recordingRetentionSeconds: Double,
+        liveMaxSeconds: Double,
+        camera: CameraSnapper,
+        alarm: AlarmPlayer,
+        location: LocationProvider,
+        noise: NoiseMeter
+    ) throws {
         self.camera = camera
         self.alarm = alarm
+        self.location = location
+        self.noise = noise
         self.token = token
         self.snapshotFPS = snapshotFPS
         self.recordingRetentionSeconds = recordingRetentionSeconds
@@ -107,9 +122,29 @@ final class LiveServer: @unchecked Sendable {
             return alarmStatusResponse()
         case "/status":
             return alarmStatusResponse()
+        case "/location.json":
+            return textResponse(location.latestJSON(), contentType: "application/json")
+        case "/telemetry.json":
+            return textResponse(telemetryJSON(), contentType: "application/json")
         default:
             return textResponse("not found", status: "404 Not Found")
         }
+    }
+
+    private func telemetryJSON() -> String {
+        let now = Date()
+        let frames = camera.frameStats()
+        let frameAgeMs = frames.lastFrameAt.map { Int(now.timeIntervalSince($0) * 1000) } ?? -1
+        let mic = noise.latest()
+        let fields = [
+            #""time":\#(Int(now.timeIntervalSince1970 * 1000))"#,
+            #""uptime":\#(Int(now.timeIntervalSince(startedAt)))"#,
+            #""cameraFrames":\#(frames.count)"#,
+            #""cameraFrameAgeMs":\#(frameAgeMs)"#,
+            #""mic":"\#(mic.status)""#,
+            #""db":\#(String(format: "%.1f", max(mic.db, -160)))"#
+        ]
+        return "{" + fields.joined(separator: ",") + "}"
     }
 
     private func alarmStatusResponse() -> Data {
@@ -191,6 +226,17 @@ private func watchHTML(token: String, fps: Double, retentionSeconds: Double, max
         main{position:relative;flex:1;overflow:hidden}
         canvas{width:100%;height:100%;object-fit:contain;background:#000}
         #max-duration{position:absolute;left:8px;bottom:8px;font-size:10px;color:rgba(255,255,255,0.4);pointer-events:none}
+        #locationBar{background:#111;border-bottom:1px solid #333;padding:8px 12px;font-size:13px;color:#ccc}
+        #locationBar a{color:#5ab0ff;text-decoration:none}
+        #mapFrame{width:100%;height:140px;border:0;display:block;background:#1b1b1b}
+        #monitor{background:#0b0b0b;border-top:1px solid #333;padding:6px 10px;font-size:12px}
+        #meterRow{display:flex;align-items:center;gap:8px}
+        #meter{flex:1;height:10px;background:#222;border-radius:5px;overflow:hidden;position:relative}
+        #meterFill{height:100%;width:0;background:#46e27b;transition:width .2s linear}
+        #meterPeak{position:absolute;top:0;width:2px;height:100%;background:#fff;left:0}
+        #meterText{min-width:110px;text-align:right;font-variant-numeric:tabular-nums;color:#ccc}
+        #log{margin-top:6px;height:96px;overflow-y:auto;font-family:ui-monospace,Menlo,monospace;font-size:11px;line-height:1.45;color:#9a9a9a;white-space:pre}
+        #log .warn{color:#ff8a5b}
         footer{display:grid;grid-template-columns:1.2fr 1fr;gap:8px;padding:10px;background:#111;border-top:1px solid #333}
         button,a{flex:1;padding:12px;border:1px solid #555;border-radius:6px;background:#1b1b1b;color:#fff;text-align:center;text-decoration:none;font-size:15px}
         #alarm{background:#d80000;border-color:#ff3b30;font-weight:800;font-size:18px}
@@ -201,10 +247,22 @@ private func watchHTML(token: String, fps: Double, retentionSeconds: Double, max
     </head>
     <body>
       <header><strong>MacBook Live</strong><span id="status">starting</span></header>
+      <div id="locationBar">
+        <div id="locationText">위치 확인 중</div>
+        <iframe id="mapFrame" loading="lazy"></iframe>
+      </div>
       <main>
         <canvas id="view" width="960" height="540"></canvas>
         <span id="max-duration">최대 \(maxDurationLabel) 연동 가능</span>
       </main>
+      <section id="monitor">
+        <div id="meterRow">
+          <span>소음</span>
+          <div id="meter"><div id="meterFill"></div><div id="meterPeak"></div></div>
+          <span id="meterText">-- dB</span>
+        </div>
+        <div id="log"></div>
+      </section>
       <footer>
         <button id="alarm">경보</button>
         <button id="save">Save Recording</button>
@@ -224,6 +282,7 @@ private func watchHTML(token: String, fps: Double, retentionSeconds: Double, max
         let mediaStream;
         let rotateTimer;
         let frameCount = 0;
+        let lastFrameBytes = 0;
 
         function setStatus(text, cls) {
           statusEl.textContent = text;
@@ -256,7 +315,9 @@ private func watchHTML(token: String, fps: Double, retentionSeconds: Double, max
             try {
               const res = await fetch(`/snapshot.jpg?token=${token}&t=${Date.now()}`, { cache: 'no-store' });
               if (!res.ok) throw new Error(String(res.status));
-              await drawBlob(await res.blob());
+              const blob = await res.blob();
+              await drawBlob(blob);
+              lastFrameBytes = blob.size;
               frameCount += 1;
               setStatus(`live ${frameCount}`, 'live');
             } catch (err) {
@@ -361,10 +422,128 @@ private func watchHTML(token: String, fps: Double, retentionSeconds: Double, max
           }
         };
 
+        const locationText = document.getElementById('locationText');
+        const mapFrame = document.getElementById('mapFrame');
+        let lastMappedKey = '';
+        const locationReasons = {
+          starting: '위치 확인 중',
+          not_determined: '위치 권한 대기 중 (맥북의 권한 창에서 허용 필요)',
+          authorized: '위치 확인 중',
+          denied: '위치 권한 꺼짐 (시스템 설정 > 개인정보 보호 및 보안 > 위치 서비스에서 MacBook Theft Alarm Location 허용)',
+          restricted: '위치 권한이 이 Mac에서 제한됨',
+          services_off: '맥북의 위치 서비스가 꺼져 있음',
+          helper_missing: '위치 앱 없음 (sudo ./watch.sh로 실행 필요)'
+        };
+
+        function updateMap(lat, lon) {
+          const key = `${lat.toFixed(4)},${lon.toFixed(4)}`;
+          if (key === lastMappedKey) return;
+          lastMappedKey = key;
+          const delta = 0.006;
+          const bbox = [lon - delta, lat - delta, lon + delta, lat + delta].join(',');
+          mapFrame.src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&marker=${lat},${lon}&layers=M`;
+        }
+
+        async function locationLoop() {
+          while (true) {
+            try {
+              const res = await fetch(`/location.json?token=${token}&t=${Date.now()}`, { cache: 'no-store' });
+              if (!res.ok) throw new Error(String(res.status));
+              const data = await res.json();
+              if (data.available) {
+                const lat = data.lat.toFixed(5);
+                const lon = data.lon.toFixed(5);
+                locationText.innerHTML =
+                  `위치: ${lat}, ${lon} (오차 ±${data.accuracy}m, ${data.age}초 전) ` +
+                  `<a href="https://www.openstreetmap.org/?mlat=${data.lat}&mlon=${data.lon}#map=17/${data.lat}/${data.lon}" target="_blank">크게 보기</a>`;
+                updateMap(data.lat, data.lon);
+              } else {
+                locationText.textContent = locationReasons[data.reason] || '위치 정보 없음';
+              }
+            } catch (err) {
+              locationText.textContent = '위치 정보 가져오기 실패';
+            }
+            await sleep(5000);
+          }
+        }
+
+        const logEl = document.getElementById('log');
+        const meterFill = document.getElementById('meterFill');
+        const meterPeak = document.getElementById('meterPeak');
+        const meterText = document.getElementById('meterText');
+        const micReasons = {
+          starting: '마이크 준비 중',
+          denied: '마이크 권한 없음',
+          unavailable: '마이크 없음'
+        };
+
+        function clock(ms) {
+          return new Date(ms).toLocaleTimeString('ko-KR', { hour12: false });
+        }
+
+        function addLog(text, warn) {
+          const line = document.createElement('div');
+          line.textContent = text;
+          if (warn) line.className = 'warn';
+          logEl.prepend(line);
+          while (logEl.childElementCount > 120) logEl.lastChild.remove();
+        }
+
+        // 화면이 정지해 보여도 카메라·전송·마이크가 살아 있는지 1초마다 기록합니다.
+        async function telemetryLoop() {
+          let tick = 0;
+          let peakDb = -160;
+          let lastCameraFrames = null;
+          let lastViewFrames = frameCount;
+          let failures = 0;
+          while (true) {
+            try {
+              const res = await fetch(`/telemetry.json?token=${token}&t=${Date.now()}`, { cache: 'no-store' });
+              if (!res.ok) throw new Error(String(res.status));
+              const data = await res.json();
+              failures = 0;
+
+              if (data.mic === 'ok') {
+                const pct = Math.max(0, Math.min(100, (data.db + 80) / 80 * 100));
+                peakDb = Math.max(peakDb, data.db);
+                meterFill.style.width = `${pct}%`;
+                meterFill.style.background = pct > 75 ? '#ff5b5b' : pct > 50 ? '#ffd23f' : '#46e27b';
+                meterText.textContent = `${data.db.toFixed(0)} dB`;
+              } else {
+                meterFill.style.width = '0';
+                meterText.textContent = micReasons[data.mic] || data.mic;
+              }
+
+              tick += 1;
+              if (tick % 4 === 0) {
+                const peakPct = Math.max(0, Math.min(100, (peakDb + 80) / 80 * 100));
+                meterPeak.style.left = `${peakPct}%`;
+                const cameraRate = lastCameraFrames === null ? '-' : data.cameraFrames - lastCameraFrames;
+                const viewRate = frameCount - lastViewFrames;
+                const stale = data.cameraFrameAgeMs < 0 || data.cameraFrameAgeMs > 2000;
+                const noise = data.mic === 'ok' ? `소음 최대 ${peakDb.toFixed(0)}dB` : (micReasons[data.mic] || data.mic);
+                addLog(
+                  `${clock(data.time)} 카메라 ${cameraRate}f/s · 전송 ${viewRate}장 ${(lastFrameBytes / 1024).toFixed(0)}KB · ${noise}`,
+                  stale || viewRate === 0
+                );
+                lastCameraFrames = data.cameraFrames;
+                lastViewFrames = frameCount;
+                peakDb = -160;
+              }
+            } catch (err) {
+              failures += 1;
+              if (failures % 4 === 1) addLog(`${clock(Date.now())} 맥북 응답 없음`, true);
+            }
+            await sleep(250);
+          }
+        }
+
         startRecording();
         setAlarmButton(false);
         refreshAlarmStatus();
         frameLoop();
+        locationLoop();
+        telemetryLoop();
       </script>
     </body>
     </html>

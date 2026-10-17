@@ -121,6 +121,18 @@ private func runLive(config: Config, stopSignal: StopSignal, onLiveReady: @escap
     }
     printStartup("카메라 프레임 수신 확인 완료")
 
+    let location = LocationProvider()
+    location.start()
+    defer {
+        location.stop()
+    }
+
+    let noise = NoiseMeter()
+    noise.start()
+    defer {
+        noise.stop()
+    }
+
     printStartup("로컬 JPEG 녹화 시작 중: \(recordingURL.path)")
     let recorder = LocalFrameRecorder(
         camera: camera,
@@ -146,7 +158,9 @@ private func runLive(config: Config, stopSignal: StopSignal, onLiveReady: @escap
             recordingRetentionSeconds: config.recordingRetentionSeconds,
             liveMaxSeconds: config.liveMaxSeconds,
             camera: camera,
-            alarm: alarm
+            alarm: alarm,
+            location: location,
+            noise: noise
         )
         try server.start()
         return server

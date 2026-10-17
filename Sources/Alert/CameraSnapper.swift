@@ -11,6 +11,8 @@ final class CameraSnapper: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
     private let lock = NSLock()
     private let context = CIContext()
     private var latestPixelBuffer: CVPixelBuffer?
+    private var receivedFrames = 0
+    private var lastFrameAt: Date?
 
     func start() throws {
         try ensureCameraPermission()
@@ -102,7 +104,16 @@ final class CameraSnapper: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
 
         lock.lock()
         latestPixelBuffer = pixelBuffer
+        receivedFrames += 1
+        lastFrameAt = Date()
         lock.unlock()
+    }
+
+    /// 화면 변화가 없어도 카메라가 계속 프레임을 보내는지 확인하기 위한 누적 수신 수입니다.
+    func frameStats() -> (count: Int, lastFrameAt: Date?) {
+        lock.lock()
+        defer { lock.unlock() }
+        return (receivedFrames, lastFrameAt)
     }
 
     private func ensureCameraPermission() throws {
